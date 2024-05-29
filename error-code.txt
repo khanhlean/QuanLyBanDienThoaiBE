@@ -1,0 +1,4 @@
+e000:success
+e001:missing fields
+e002:duplicated id
+e003:login failed
