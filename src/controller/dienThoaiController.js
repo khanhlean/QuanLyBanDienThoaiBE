@@ -4,8 +4,8 @@ const bcrypt = require('bcrypt');
 const upload = require('../middleware/multer');
 const jwt = require('jsonwebtoken');
 
-const pool = Database.getInstance();
-pool.connect();
+// const pool = Database.getInstance();
+// pool.connect();
 
 let getAllDienThoai = async (req, res) => {
     try {

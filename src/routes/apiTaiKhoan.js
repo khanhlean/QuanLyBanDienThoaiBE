@@ -5,9 +5,9 @@ const auth = require('../middleware/auth');
 
 let Router = express.Router();
 
-Router.post('/dangnhap', taiKhoanController.dangNhap);
+Router.post('/sign-in', taiKhoanController.signIn);
 Router.post('/dangnhapNV', taiKhoanController.dangNhapNV);
-Router.post('/dangky', taiKhoanController.dangKy);
+Router.post('/sign-up', taiKhoanController.signUp);
 Router.post('/doimatkhau', taiKhoanController.doiMatKhau);
 Router.post('/checkmatkhautrung', taiKhoanController.checkMatKhauTrung);
 

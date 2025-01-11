@@ -1,11 +1,11 @@
-const Database = require('../config/database');
+const pool = require('../config/database');
 const auth = require('../middleware/auth');
 const bcrypt = require('bcrypt');
 
 const jwt = require('jsonwebtoken');
 
-const pool = Database.getInstance();
-pool.connect();
+// const pool = Database.getInstance();
+// pool.connect();
 
 let capNhatThongTinNguoiDung = async (req, res) => {
     const { MaKH, Ho, Ten, DiaChi, SDT, Email } = req.body;

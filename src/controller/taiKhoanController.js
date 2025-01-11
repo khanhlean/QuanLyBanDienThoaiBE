@@ -1,46 +1,126 @@
-const Database = require('../config/database');
+const pool = require('../config/database.js');
 const auth = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const pool = Database.getInstance();
-pool.connect();
+const validator = require('validator');
+const dotenv = require('dotenv');
 
-const dangNhap = async (req, res) => {
-    const { SDT, Password } = req.body;
+const Customer = require('../models/Customer');
 
-    if (!SDT || !Password) {
-        res.status(400).json({ error: 'Số điện thoại hoặc mật khẩu không được để trống' });
-        return;
+const CustomerDAO = require('../dao/CustomerDAO');
+const customerDAO = new CustomerDAO();
+
+dotenv.config();
+
+// const pool = Database.getInstance();
+// pool.connect();
+
+// const dangNhap = async (req, res) => {
+//     const { SDT, Password } = req.body;
+
+//     if (!SDT || !Password) {
+//         res.status(400).json({ error: 'Số điện thoại hoặc mật khẩu không được để trống' });
+//         return;
+//     }
+
+//     try {
+//         const query = `SELECT * FROM dbo.KHACHHANG WHERE SDT = '${SDT}'`;
+//         const result = await pool.executeQuery(query);
+
+//         if (result.length > 0) {
+//             const { MaKH, Password: storedPassword, MaQuyen } = result[0];
+//             // const { MaKH, PasswordHash: storedPasswordHash } = result[0];
+
+//             if (Password === storedPassword) {
+//                 // Tạo token JWT với MaKH
+//                 const token = jwt.sign({ MaKH, MaQuyen }, 'jwt_secret_key');
+
+//                 res.status(200).json({
+//                     MaKH,
+//                     SDT,
+//                     MaQuyen,
+//                     token,
+//                 });
+//             } else {
+//                 res.status(401).json({ error: 'Mật khẩu không trùng khớp với hệ thống' });
+//             }
+//             // bcrypt.compare(Password, storedPasswordHash, (err, isMatch) => {
+//             //     if (err) {
+//             //         return res.status(500).json({ error: 'Lỗi khi xác minh mật khẩu' });
+//             //     }
+
+//             //     if (isMatch) {
+//             //         // Tạo token JWT với MaKH
+//             //         const token = jwt.sign({ MaKH, MaQuyen }, 'jwt_secret_key');
+
+//             //         res.status(200).json({
+//             //             MaKH,
+//             //             SDT,
+//             //             token,
+//             //         });
+//             //     } else {
+//             //         res.status(401).json({ error: 'Mật khẩu không trùng khớp với hệ thống' });
+//             //     }
+//             // });
+//         } else {
+//             res.status(401).json({ error: 'Số điện thoại này chưa được đăng ký' });
+//         }
+//     } catch (error) {
+//         console.log('Error:', error);
+//         res.status(500).json({ error: 'Lỗi máy chủ nội bộ' });
+//     }
+// };
+
+let signIn = async (req, res) => {
+    const username = req.body.phoneOrEmail;
+    const password = req.body.password;
+
+    if (!username) {
+        return res.status(401).json({
+            success: false,
+            message: process.env.VALIDATION_USERNAME_E001,
+        });
+    }
+
+    if (!password) {
+        return res.status(401).json({
+            success: false,
+            message: process.env.VALIDATION_PASSWORD_E001,
+        });
     }
 
     try {
-        const query = `SELECT * FROM dbo.KHACHHANG WHERE SDT = '${SDT}'`;
-        const result = await pool.executeQuery(query);
-
-        if (result.length > 0) {
-            const { MaKH, Password: storedPassword, MaQuyen } = result[0];
-
-            if (Password === storedPassword) {
-                // Tạo token JWT với MaKH
-                const token = jwt.sign({ MaKH, MaQuyen }, 'jwt_secret_key');
-
-                res.status(200).json({
-                    MaKH,
-                    SDT,
-                    MaQuyen,
-                    token,
-                });
-            } else {
-                res.status(401).json({ error: 'Mật khẩu không trùng khớp với hệ thống' });
-            }
+        // Check if the username is a valid email or phone number
+        let user;
+        if (validator.isEmail(username)) {
+            user = await customerDAO.findByEmail(username);
         } else {
-            res.status(401).json({ error: 'Số điện thoại này chưa được đăng ký' });
+            user = await customerDAO.findByPhoneNumber(username);
         }
+        console.log('user', user);
+        console.log('password', password);
+        console.log('Password', user.Password);
+        if (!user || !(await customerDAO.comparePassword(password, user.Password))) {
+            return res.status(401).json({
+                success: false,
+                message: process.env.LOGIN_E001,
+            });
+        }
+
+        // Tạo token và trả về cho người dùng
+        const token = jwt.sign({ userId: user.MaKH }, process.env.TOKEN_KEY, { expiresIn: '1d' });
+        return res.status(201).json({
+            success: true,
+            message: process.env.LOGIN_SUCCESS,
+            token,
+            customer: user,
+        });
     } catch (error) {
-        console.log('Error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error(error);
+        return res.status(500).json({ success: false, message: process.env.ERROR_E001 });
     }
 };
+
 const dangNhapNV = async (req, res) => {
     const { SDT, Password } = req.body;
 
@@ -75,6 +155,23 @@ const dangNhapNV = async (req, res) => {
     } catch (error) {
         console.log('Error:', error);
         res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+let signUp = async (req, res) => {
+    const { HovaTen, Email, SDT, DiaChi, Password } = req.body;
+
+    try {
+        const result = await customerDAO.signUpCustomer({ HovaTen, Email, SDT, DiaChi, Password });
+
+        if (result.success) {
+            return res.status(201).json({ success: true, message: result.message });
+        } else {
+            return res.status(500).json({ success: false, message: result.message });
+        }
+    } catch (error) {
+        console.error(error);
+        return res.status(500).json({ success: false, message: process.env.CUSSIGNUP_ERROR });
     }
 };
 
@@ -159,9 +256,9 @@ let doiMatKhau = async (req, res) => {
 };
 
 module.exports = {
-    dangNhap,
+    signIn,
     dangNhapNV,
     doiMatKhau,
-    dangKy,
+    signUp,
     checkMatKhauTrung,
 };

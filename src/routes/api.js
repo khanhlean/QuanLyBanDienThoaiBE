@@ -1,4 +1,5 @@
 const routerTaiKhoan = require('./apiTaikhoan');
+const routerMenuItems = require('./apiMenuItems');
 const routerDienThoai = require('./apiDienThoai');
 const routerLoai = require('./apiLoai');
 const routerHang = require('./apiHang');
@@ -8,9 +9,11 @@ const routerPhieuDat = require('./apiPhieuDat');
 const routerKhuyenMai = require('./apiKhuyenMai');
 
 function initAPIRoute(app) {
-    app.use('/api/v1/taikhoan', routerTaiKhoan);
+    app.use('/api/v1/account', routerTaiKhoan);
 
     app.use('/api/v1/dienthoai', routerDienThoai);
+
+    app.use('/api/v1/menuitems', routerMenuItems);
 
     app.use('/api/v1/loai', routerLoai);
 
